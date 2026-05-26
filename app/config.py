@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     azure_request_timeout_s: int = 30
     azure_optional_filter: str = ""
 
+    http_proxy: str = ""
+    https_proxy: str = ""
+    no_proxy: str = ""
+
     log_level: str = "INFO"
 
     jsonl_batch_size: int = Field(default=10000, ge=100, le=200000)

@@ -68,6 +68,37 @@ def test_fetch_pages_gives_up_after_max_retries(settings):
             list(azure_client.fetch_pages(settings))
 
 
+def test_proxy_settings_applied_to_session(settings):
+    settings.http_proxy = "http://proxy.example.com:8080"
+    settings.https_proxy = "https://proxy.example.com:8080"
+
+    import unittest.mock as mock
+    with mock.patch("requests.Session") as MockSession:
+        mock_session = MockSession.return_value
+        mock_session.get.return_value.status_code = 200
+        mock_session.get.return_value.json.return_value = {"Items": [], "NextPageLink": None}
+        list(azure_client.fetch_pages(settings))
+
+    mock_session.proxies.update.assert_called_once_with(
+        {"http": "http://proxy.example.com:8080", "https": "https://proxy.example.com:8080"}
+    )
+
+
+def test_no_proxy_applied_to_session(settings):
+    settings.https_proxy = "https://proxy.example.com:8080"
+    settings.no_proxy = "169.254.169.254,metadata.google.internal"
+
+    import unittest.mock as mock
+    with mock.patch("requests.Session") as MockSession:
+        mock_session = MockSession.return_value
+        mock_session.proxies = {}
+        mock_session.get.return_value.status_code = 200
+        mock_session.get.return_value.json.return_value = {"Items": [], "NextPageLink": None}
+        list(azure_client.fetch_pages(settings))
+
+    assert mock_session.proxies["no"] == "169.254.169.254,metadata.google.internal"
+
+
 @responses.activate
 def test_optional_filter_is_included(settings):
     settings.azure_optional_filter = "serviceName eq 'Virtual Machines'"

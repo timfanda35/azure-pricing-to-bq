@@ -119,6 +119,9 @@ WHERE ingestion_date = DATE '2026-05-20'
 | `AZURE_MAX_RETRIES` | `5` | |
 | `AZURE_REQUEST_TIMEOUT_S` | `30` | |
 | `AZURE_OPTIONAL_FILTER` | `` | OData `$filter` string |
+| `HTTP_PROXY` | `` | proxy for outbound HTTP requests |
+| `HTTPS_PROXY` | `` | proxy for outbound HTTPS requests (Azure API uses HTTPS) |
+| `NO_PROXY` | `` | comma-separated list of hosts to bypass the proxy |
 | `JSONL_BATCH_SIZE` | `10000` | items per uploaded JSONL file |
 | `LOG_LEVEL` | `INFO` | |
 

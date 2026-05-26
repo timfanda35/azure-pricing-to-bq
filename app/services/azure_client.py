@@ -56,7 +56,15 @@ def fetch_pages(
     """Yield (page_index, items) for every page in the Azure Retail Prices response chain."""
     settings = settings or get_settings()
     own_session = session is None
-    session = session or requests.Session()
+    if own_session:
+        session = requests.Session()
+        proxies = {k: v for k, v in {"http": settings.http_proxy, "https": settings.https_proxy}.items() if v}
+        if proxies:
+            session.proxies.update(proxies)
+        if settings.no_proxy:
+            session.proxies["no"] = settings.no_proxy
+    else:
+        session = session
 
     @retry(
         retry=retry_if_exception_type(
