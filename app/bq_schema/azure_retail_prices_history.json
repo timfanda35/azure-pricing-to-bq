@@ -1,9 +1,9 @@
 [
   {"name": "ingestion_date", "mode": "REQUIRED", "type": "DATE", "description": "Calendar date (UTC) of the load that produced this row."},
   {"name": "currency_code", "mode": "REQUIRED", "type": "STRING", "description": "Currency of the prices in this row."},
-  {"name": "tier_minimum_units", "mode": "NULLABLE", "type": "NUMERIC", "description": "Minimum units to reach this tier."},
-  {"name": "retail_price", "mode": "NULLABLE", "type": "NUMERIC", "description": "Retail price (before discounts) per unit."},
-  {"name": "unit_price", "mode": "NULLABLE", "type": "NUMERIC", "description": "Effective unit price."},
+  {"name": "tier_minimum_units", "mode": "NULLABLE", "type": "BIGNUMERIC", "description": "Minimum units to reach this tier."},
+  {"name": "retail_price", "mode": "NULLABLE", "type": "BIGNUMERIC", "description": "Retail price (before discounts) per unit."},
+  {"name": "unit_price", "mode": "NULLABLE", "type": "BIGNUMERIC", "description": "Effective unit price."},
   {"name": "arm_region_name", "mode": "NULLABLE", "type": "STRING", "description": "ARM region name, e.g. eastus."},
   {"name": "location", "mode": "NULLABLE", "type": "STRING", "description": "Human-readable region/location."},
   {"name": "effective_start_date", "mode": "NULLABLE", "type": "TIMESTAMP", "description": "Date the price took effect."},
@@ -27,8 +27,8 @@
     "type": "RECORD",
     "description": "Savings plan options from the preview API.",
     "fields": [
-      {"name": "unit_price", "mode": "NULLABLE", "type": "NUMERIC"},
-      {"name": "retail_price", "mode": "NULLABLE", "type": "NUMERIC"},
+      {"name": "unit_price", "mode": "NULLABLE", "type": "BIGNUMERIC"},
+      {"name": "retail_price", "mode": "NULLABLE", "type": "BIGNUMERIC"},
       {"name": "term", "mode": "NULLABLE", "type": "STRING"}
     ]
   },

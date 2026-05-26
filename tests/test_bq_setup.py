@@ -58,6 +58,13 @@ def test_ensure_dataset_and_tables_creates_dataset_and_both_tables(settings):
     assert "require_partition_filter = TRUE" in history_ddl
     # Nested savings_plan must render as ARRAY<STRUCT<...>>
     assert "ARRAY<STRUCT<" in history_ddl
+    # Price columns must be BIGNUMERIC, not NUMERIC — BQ NUMERIC's DECIMAL(38, 9)
+    # truncates Azure prices like 51.5193995147 (10 fractional digits).
+    assert "`unit_price` BIGNUMERIC" in history_ddl
+    assert "`retail_price` BIGNUMERIC" in history_ddl
+    assert "`tier_minimum_units` BIGNUMERIC" in history_ddl
+    # No scalar NUMERIC fields should remain anywhere in the DDL.
+    assert " NUMERIC" not in history_ddl.replace("BIGNUMERIC", "")
 
     runs_ddl = next(d for d in ddls if "pricing_runs" in d)
     assert "CREATE TABLE IF NOT EXISTS" in runs_ddl
