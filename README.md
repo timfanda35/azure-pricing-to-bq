@@ -118,7 +118,8 @@ WHERE ingestion_date = DATE '2026-05-20'
 | `AZURE_CURRENCY` | `USD` | |
 | `AZURE_MAX_RETRIES` | `5` | |
 | `AZURE_REQUEST_TIMEOUT_S` | `30` | |
-| `AZURE_OPTIONAL_FILTER` | `` | OData `$filter` string |
+| `AZURE_OPTIONAL_FILTER` | `` | OData `$filter` string. When set, the loader honors it as-is and does not partition. When empty, the loader auto-partitions by `serviceFamily` so no single fetch chain approaches the API's `$skip = 1,000,000` hard cap. |
+| `AZURE_SERVICE_FAMILIES` | `` | CSV override for the `serviceFamily` partition list. Empty = use the built-in documented list (~26 families). |
 | `HTTP_PROXY` | `` | proxy for outbound HTTP requests |
 | `HTTPS_PROXY` | `` | proxy for outbound HTTPS requests (Azure API uses HTTPS) |
 | `NO_PROXY` | `` | comma-separated list of hosts to bypass the proxy |
@@ -135,3 +136,4 @@ WHERE ingestion_date = DATE '2026-05-20'
 - **ADC instead of service-account key files**: Cloud Run's identity is the auth.
 - **UUID `run_id`**: BigQuery has no auto-increment; UUID also matches the GCS staging-prefix layout.
 - **Empty-response safeguard**: if the API returns zero items, the loader refuses to truncate today's partition (`RuntimeError`) and the failure is recorded in `pricing_runs`.
+- **`serviceFamily` partitioning** (default): the Azure Retail Prices API rejects any request with `$skip >= 1,000,000` (HTTP 400). At page size 1000, that's a hard ceiling of ~1M items per fetch chain. The total Azure corpus is in the ~600k–1M range and growing, so we slice by `serviceFamily` (when `AZURE_OPTIONAL_FILTER` is empty) — every family starts at `$skip=0` and stays well under the cap. All families' rows still land in the same LOAD JOB and the same `azure_retail_prices` table — partitioning is purely a fetch-side concern.

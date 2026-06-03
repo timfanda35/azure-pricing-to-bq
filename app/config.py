@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     azure_max_retries: int = 5
     azure_request_timeout_s: int = 30
     azure_optional_filter: str = ""
+    # CSV override for the serviceFamily partition list. Empty = use the built-in
+    # list from app.services.azure_client.SERVICE_FAMILIES.
+    azure_service_families: str = ""
 
     http_proxy: str = ""
     https_proxy: str = ""

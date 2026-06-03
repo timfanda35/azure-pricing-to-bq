@@ -152,7 +152,7 @@ def run_load(
         buffer = []
 
     try:
-        for page_idx, items in azure_client.fetch_pages(settings):
+        for page_idx, items in azure_client.fetch_all_pages(settings):
             page_count = page_idx + 1
             for item in items:
                 buffer.append(_transform_item(item, ingestion_date_str, ingested_at_str))

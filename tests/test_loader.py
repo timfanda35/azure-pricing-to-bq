@@ -93,7 +93,7 @@ def test_run_load_happy_path_two_pages(settings):
     ]
 
     with (
-        patch.object(loader.azure_client, "fetch_pages", return_value=iter(pages)),
+        patch.object(loader.azure_client, "fetch_all_pages", return_value=iter(pages)),
         patch.object(loader, "upload_jsonl") as upload_mock,
     ):
         result = loader.run_load(settings=settings, bq_client=bq_client, gcs_client=gcs_client)
@@ -180,7 +180,7 @@ def test_run_load_load_job_error_leaves_staging_in_place(settings):
 
     pages = [(0, [_make_item("m1")])]
     with (
-        patch.object(loader.azure_client, "fetch_pages", return_value=iter(pages)),
+        patch.object(loader.azure_client, "fetch_all_pages", return_value=iter(pages)),
         patch.object(loader, "upload_jsonl"),
     ):
         with pytest.raises(RuntimeError, match="BigQuery load job failed"):
@@ -201,7 +201,7 @@ def test_run_load_empty_response_refuses_to_truncate(settings):
 
     pages = [(0, [])]
     with (
-        patch.object(loader.azure_client, "fetch_pages", return_value=iter(pages)),
+        patch.object(loader.azure_client, "fetch_all_pages", return_value=iter(pages)),
         patch.object(loader, "upload_jsonl"),
     ):
         with pytest.raises(RuntimeError, match="zero items"):

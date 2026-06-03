@@ -17,6 +17,43 @@ logger = logging.getLogger(__name__)
 
 BASE_URL = "https://prices.azure.com/api/retail/prices"
 
+# Documented `serviceFamily` values from
+# https://learn.microsoft.com/en-us/rest/api/cost-management/retail-prices/azure-retail-prices
+# (section "Supported serviceFamily values"). The Azure Retail Prices API caps
+# `$skip` at 1,000,000 — once `$skip >= 1_000_000` the API returns HTTP 400.
+# Page size is 1000, so a single fetch chain can return at most ~1M items
+# before hitting the cap. The whole Azure corpus is in the ~600k-1M range and
+# growing, so we slice by `serviceFamily` to give each chain plenty of headroom
+# (every family stays well under 1M, restarts at `$skip=0`).
+SERVICE_FAMILIES: tuple[str, ...] = (
+    "Analytics",
+    "Azure Arc",
+    "Azure Communication Services",
+    "Azure Security",
+    "Azure Stack",
+    "Compute",
+    "Containers",
+    "Data",
+    "Databases",
+    "Developer Tools",
+    "Dynamics",
+    "Gaming",
+    "Integration",
+    "Internet of Things",
+    "Management and Governance",
+    "Microsoft Syntex",
+    "Mixed Reality",
+    "Networking",
+    "Other",
+    "Power Platform",
+    "Quantum Computing",
+    "Security",
+    "Storage",
+    "Telecommunications",
+    "Web",
+    "Windows Virtual Desktop",
+)
+
 
 class RetryableHTTPError(Exception):
     """Raised for 429/5xx responses so tenacity will retry them."""
@@ -58,7 +95,11 @@ def fetch_pages(
     own_session = session is None
     if own_session:
         session = requests.Session()
-        proxies = {k: v for k, v in {"http": settings.http_proxy, "https": settings.https_proxy}.items() if v}
+        proxies = {
+            k: v
+            for k, v in {"http": settings.http_proxy, "https": settings.https_proxy}.items()
+            if v
+        }
         if proxies:
             session.proxies.update(proxies)
         if settings.no_proxy:
@@ -97,6 +138,85 @@ def fetch_pages(
             yield page_idx, items
             url = data.get("NextPageLink") or None
             page_idx += 1
+    finally:
+        if own_session:
+            session.close()
+
+
+def _resolve_service_families(settings: Settings) -> tuple[str, ...]:
+    """Return the list of serviceFamily values to iterate over.
+
+    Honors the optional `AZURE_SERVICE_FAMILIES` env var (CSV) when set,
+    otherwise falls back to the built-in documented list.
+    """
+    raw = (settings.azure_service_families or "").strip()
+    if not raw:
+        return SERVICE_FAMILIES
+    return tuple(p.strip() for p in raw.split(",") if p.strip())
+
+
+def _build_session(settings: Settings) -> requests.Session:
+    session = requests.Session()
+    proxies = {
+        k: v for k, v in {"http": settings.http_proxy, "https": settings.https_proxy}.items() if v
+    }
+    if proxies:
+        session.proxies.update(proxies)
+    if settings.no_proxy:
+        session.proxies["no"] = settings.no_proxy
+    return session
+
+
+def fetch_all_pages(
+    settings: Settings | None = None,
+    session: requests.Session | None = None,
+) -> Iterator[tuple[int, list[dict]]]:
+    """Yield (page_index, items) across the full corpus, working around Azure's $skip limit.
+
+    Behavior:
+      * If `settings.azure_optional_filter` is set, that filter is honored as-is
+        and pages are fetched in a single stream — the caller has already
+        constrained the result set.
+      * Otherwise, the corpus is partitioned by `serviceFamily`. Each family
+        gets its own fetch chain starting at $skip=0, so the per-chain depth
+        stays well below the API's $skip = 1,000,000 hard cap (HTTP 400 above).
+
+    Page indices are global across partitions so the loader's page counter
+    increments monotonically.
+    """
+    settings = settings or get_settings()
+
+    if settings.azure_optional_filter:
+        yield from fetch_pages(settings, session)
+        return
+
+    own_session = session is None
+    if own_session:
+        session = _build_session(settings)
+
+    families = _resolve_service_families(settings)
+    page_idx = 0
+    try:
+        for i, family in enumerate(families, start=1):
+            sub_settings = settings.model_copy(
+                update={"azure_optional_filter": f"serviceFamily eq '{family}'"}
+            )
+            logger.info(
+                "azure.fetch_all_pages.family family=%r (%d/%d)",
+                family,
+                i,
+                len(families),
+            )
+            family_items = 0
+            for _, items in fetch_pages(sub_settings, session):
+                family_items += len(items)
+                yield page_idx, items
+                page_idx += 1
+            logger.info(
+                "azure.fetch_all_pages.family.done family=%r items=%d",
+                family,
+                family_items,
+            )
     finally:
         if own_session:
             session.close()
