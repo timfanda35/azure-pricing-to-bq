@@ -26,11 +26,13 @@ BASE_URL = "https://prices.azure.com/api/retail/prices"
 # growing, so we slice by `serviceFamily` to give each chain plenty of headroom
 # (every family stays well under 1M, restarts at `$skip=0`).
 SERVICE_FAMILIES: tuple[str, ...] = (
+    "AI + Machine Learning",
     "Analytics",
     "Azure Arc",
     "Azure Communication Services",
     "Azure Security",
     "Azure Stack",
+    "Blockchain",
     "Compute",
     "Containers",
     "Data",
